@@ -352,7 +352,8 @@ URL: https://github.com/Huddle/Resemble.js
 				}
 
 				if( isRGBSimilar(pixel1, pixel2) ){
-					copyPixel(targetPix, offset, pixel2);
+					addBrightnessInfo(pixel2);
+					copyGrayScalePixel(targetPix, offset, pixel2);
 
 				} else if( ignoreAntialiasing && (
 						addBrightnessInfo(pixel1), // jit pixel info augmentation looks a little weird, sorry.
