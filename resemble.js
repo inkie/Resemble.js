@@ -297,12 +297,12 @@ URL: https://github.com/Huddle/Resemble.js
 			data.h = getHue(data.r,data.g,data.b);
 		}
 
-		function analyseImages(img1, img2, width, height){
+		function analyseImages(images, width, height){
 
 			var hiddenCanvas = document.createElement('canvas');
 
-			var data1 = img1.data;
-			var data2 = img2.data;
+			var data1 = normalise(images[0],width, height, false).data;
+			var data2 = normalise(images[1],width, height, false).data;
 
 			hiddenCanvas.width = width;
 			hiddenCanvas.height = height;
@@ -375,8 +375,35 @@ URL: https://github.com/Huddle/Resemble.js
 
 			});
 
+			var data1 = normalise(images[0],width, height).data;
+			var data2 = normalise(images[1],width, height).data;
+
+			loop(height, width, function(verticalPos, horizontalPos){
+
+				if(skip){ // only skip if the image isn't small
+					if(verticalPos % skip === 0 || horizontalPos % skip === 0){
+						return;
+					}
+				}
+
+				var offset = (verticalPos*width + horizontalPos) * 4;
+				var pixel1 = getPixelInfo(data1, offset, 1);
+				var pixel2 = getPixelInfo(data2, offset, 2);
+
+				if(pixel1 === null || pixel2 === null){
+					return;
+				}
+
+				if( isRGBSimilar(pixel1, pixel2) ){
+					addBrightnessInfo(pixel2);
+					copyGrayScalePixel(targetPix, offset, pixel2);
+				}
+			});
+
 			data.misMatchPercentage = (mismatchCount / (height*width) * 100).toFixed(2);
 			data.analysisTime = Date.now() - time;
+			console.log("Analayse Time");
+			console.log(data.analysisTime);
 
 			data.getImageDataUrl = function(text){
 				var barHeight = 0;
@@ -418,7 +445,7 @@ URL: https://github.com/Huddle/Resemble.js
 			return barHeight;
 		}
 
-		function normalise(img, w, h){
+		function normalise(img, w, h, align_top){
 			var c;
 			var context;
 
@@ -427,7 +454,13 @@ URL: https://github.com/Huddle/Resemble.js
 				c.width = w;
 				c.height = h;
 				context = c.getContext('2d');
-				context.putImageData(img, 0, 0);
+				if(align_top == false)
+				{
+					context.putImageData(img, 0, h - img.height);
+				}
+				else{
+					context.putImageData(img, 0, 0);	
+				}
 				return context.getImageData(0, 0, w, h);
 			}
 
@@ -451,7 +484,7 @@ URL: https://github.com/Huddle/Resemble.js
 
 					data.dimensionDifference = { width: images[0].width - images[1].width, height: images[0].height - images[1].height };
 
-					analyseImages( normalise(images[0],width, height), normalise(images[1],width, height), width, height);
+					analyseImages( images, width, height);
 
 					triggerDataUpdate();
 				}
