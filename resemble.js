@@ -242,11 +242,13 @@ URL: https://github.com/Huddle/Resemble.js
 			return false;
 		}
 
-		function errorPixel(px, offset){
-			px[offset] = 255; //r
+		function errorPixel(px, offset, panel){
+			px[offset] = 0; //r
 			px[offset + 1] = 0; //g
-			px[offset + 2] = 255; //b
+			px[offset + 2] = 0; //b
 			px[offset + 3] = 255; //a
+			px[offset + panel] = 255; //a
+
 		}
 
 		function copyPixel(px, offset, data){
@@ -298,16 +300,30 @@ URL: https://github.com/Huddle/Resemble.js
 		}
 
 		function analyseImages(images, width, height){
-
+			
 			var hiddenCanvas = document.createElement('canvas');
 
-			var data1 = normalise(images[0],width, height, false).data;
-			var data2 = normalise(images[1],width, height, false).data;
+			var data0;//this is the bigger one
+			var data1;
+			var data0Height;
+			var data1Height;
+			if(images[0].height>images[1].height){
+				data0Height = images[0].height;
+				data1Height = images[1].height;
+				data0 = normalise(images[0],width, height).data;
+				data1 = normalise(images[1],width, height).data;
+			} else{
+				data0Height = images[1].height;
+				data1Height = images[0].height;
+				data1 = normalise(images[0],width, height).data;
+				data0 = normalise(images[1],width, height).data;
+			}			
 
 			hiddenCanvas.width = width;
 			hiddenCanvas.height = height;
 
 			var context = hiddenCanvas.getContext('2d');
+			//can copy rather than create a blank one
 			var imgd = context.createImageData(width,height);
 			var targetPix = imgd.data;
 
@@ -321,84 +337,52 @@ URL: https://github.com/Huddle/Resemble.js
 				skip = 6;
 			}
 
-			loop(height, width, function(verticalPos, horizontalPos){
-
-				if(skip){ // only skip if the image isn't small
-					if(verticalPos % skip === 0 || horizontalPos % skip === 0){
-						return;
-					}
-				}
-
-				var offset = (verticalPos*width + horizontalPos) * 4;
-				var pixel1 = getPixelInfo(data1, offset, 1);
-				var pixel2 = getPixelInfo(data2, offset, 2);
-
-				if(pixel1 === null || pixel2 === null){
-					return;
-				}
-
-				if (ignoreColors){
-
-					addBrightnessInfo(pixel1);
-					addBrightnessInfo(pixel2);
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset);
-						mismatchCount++;
-					}
-					return;
-				}
-
-				if( isRGBSimilar(pixel1, pixel2) ){
-					addBrightnessInfo(pixel2);
-					copyGrayScalePixel(targetPix, offset, pixel2);
-
-				} else if( ignoreAntialiasing && (
-						addBrightnessInfo(pixel1), // jit pixel info augmentation looks a little weird, sorry.
-						addBrightnessInfo(pixel2),
-						isAntialiased(pixel1, data1, 1, verticalPos, horizontalPos, width) ||
-						isAntialiased(pixel2, data2, 2, verticalPos, horizontalPos, width)
-					)){
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset);
-						mismatchCount++;
+			var fromTop = true;
+			var topIndex = 0;//start from 0?
+			var bottomIndex = 0;
+			while(topIndex + bottomIndex < data1Height -4){
+				if(fromTop){
+					topIndex ++;
+					for (var col = 0; col < width; col ++){
+						var offset = (topIndex*width + col) * 4;
+						//the last para maybe useless
+						var pixel0 = getPixelInfo(data0, offset, 1);
+						var pixel1 = getPixelInfo(data1, offset, 2);
+						if( isRGBSimilar(pixel0, pixel1) ){
+							addBrightnessInfo(pixel0);
+							copyGrayScalePixel(targetPix, offset, pixel0);
+						}else {
+							errorPixel(targetPix, offset, 0);
+							mismatchCount++;
+							fromTop = false;
+						}
 					}
 				} else {
-					errorPixel(targetPix, offset);
-					mismatchCount++;
-				}
-
-			});
-
-			var data1 = normalise(images[0],width, height).data;
-			var data2 = normalise(images[1],width, height).data;
-
-			loop(height, width, function(verticalPos, horizontalPos){
-
-				if(skip){ // only skip if the image isn't small
-					if(verticalPos % skip === 0 || horizontalPos % skip === 0){
-						return;
+					bottomIndex ++;
+					for (var col = 0; col < width; col ++){
+						var offset0 = ((data0Height - bottomIndex)*width + col) * 4;
+						var offset1 = ((data1Height - bottomIndex)*width + col) * 4;
+						//the last para maybe useless
+						var pixel0 = getPixelInfo(data0, offset0, 1);
+						var pixel1 = getPixelInfo(data1, offset1, 2);
+						if( isRGBSimilar(pixel0, pixel1) ){
+							addBrightnessInfo(pixel0);
+							copyGrayScalePixel(targetPix, offset0, pixel0);
+						}else {
+							errorPixel(targetPix, offset0,0);
+							mismatchCount++;
+							fromTop = true;
+						}
 					}
 				}
+			}
 
-				var offset = (verticalPos*width + horizontalPos) * 4;
-				var pixel1 = getPixelInfo(data1, offset, 1);
-				var pixel2 = getPixelInfo(data2, offset, 2);
-
-				if(pixel1 === null || pixel2 === null){
-					return;
+			for(var row = topIndex; row + bottomIndex < data0Height - 2; row ++){
+				for (var col = 0; col < width; col ++){
+					var offset = (row*width + col) * 4;
+					errorPixel(targetPix, offset,0);
 				}
-
-				if( isRGBSimilar(pixel1, pixel2) ){
-					addBrightnessInfo(pixel2);
-					copyGrayScalePixel(targetPix, offset, pixel2);
-				}
-			});
+			}
 
 			data.misMatchPercentage = (mismatchCount / (height*width) * 100).toFixed(2);
 			data.analysisTime = Date.now() - time;
