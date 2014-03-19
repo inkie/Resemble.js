@@ -337,37 +337,9 @@ URL: https://github.com/Huddle/Resemble.js
 					return;
 				}
 
-				if (ignoreColors){
-
-					addBrightnessInfo(pixel1);
-					addBrightnessInfo(pixel2);
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset);
-						mismatchCount++;
-					}
-					return;
-				}
-
 				if( isRGBSimilar(pixel1, pixel2) ){
 					addBrightnessInfo(pixel2);
 					copyGrayScalePixel(targetPix, offset, pixel2);
-
-				} else if( ignoreAntialiasing && (
-						addBrightnessInfo(pixel1), // jit pixel info augmentation looks a little weird, sorry.
-						addBrightnessInfo(pixel2),
-						isAntialiased(pixel1, data1, 1, verticalPos, horizontalPos, width) ||
-						isAntialiased(pixel2, data2, 2, verticalPos, horizontalPos, width)
-					)){
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset);
-						mismatchCount++;
-					}
 				} else {
 					errorPixel(targetPix, offset);
 					mismatchCount++;
@@ -377,6 +349,7 @@ URL: https://github.com/Huddle/Resemble.js
 
 			data.misMatchPercentage = (mismatchCount / (height*width) * 100).toFixed(2);
 			data.analysisTime = Date.now() - time;
+			console.log(data.analysisTime);
 
 			data.getImageDataUrl = function(text){
 				var barHeight = 0;
